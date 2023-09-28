@@ -19,3 +19,14 @@
 
 # Go workspace file
 go.work
+
+# JS / Tailwind bs
+package-lock.json
+package.json
+node_modules/
+
+# Database files
+*.sql
+
+# scan outputs
+nmap/*

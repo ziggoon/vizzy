@@ -1,0 +1,4 @@
+github.com/jritsema/gotoolbox v0.8.0 h1:guUvlilrUcT24i0iGnasLch6pjWJ437Qnabk6WTmPEU=
+github.com/jritsema/gotoolbox v0.8.0/go.mod h1:OgV4sjpMB/bx/ZZPpXWvfalGrniFvkvGtqFRQH6GGHY=
+github.com/mattn/go-sqlite3 v1.14.17 h1:mCRHCLDUBXgpKAqIKsaAaAsrAlbkeomtRFKXh2L6YIM=
+github.com/mattn/go-sqlite3 v1.14.17/go.mod h1:2eHXhiwb8IkHr+BDWZGa96P6+rkvnG63S2DGjv9HUNg=
