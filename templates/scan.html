@@ -11,14 +11,8 @@
   <body>
     <main>
       <div> {{ template "navbar.html" . }} </div>
-      <div id="scans" class="h-screen">
-        <div class="p-2 flex justify-center justify-around items-center">
-          {{ range .ScanFiles }}
-            <a href="/scans/{{ . }}">
-              <div class="my-2">{{ . }}</div>
-            </a>
-          {{ end }}
-        </div>
+      <div>
+        <iframe src="/nmap/{{ . }}"></iframe>
       </div>
     </main>
   </body>

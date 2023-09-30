@@ -1,0 +1,4 @@
+# Nmap 7.93 scan initiated Thu Sep 28 14:51:40 2023 as: "C:\\Program Files (x86)\\Nmap\\nmap.exe" -sS -T4 -A -sC -oA scanme --stylesheet https://raw.githubusercontent.com/honze-net/nmap-bootstrap-xsl/master/nmap-bootstrap.xsl secdaemons.com
+Host: 140.192.47.80 (cst-47-80.cst-348-netseclab.depaul.edu)	Status: Up
+Host: 140.192.47.80 (cst-47-80.cst-348-netseclab.depaul.edu)	Ports: 80/open/tcp//http//Apache httpd 2.4.48/, 113/closed/tcp//ident///, 443/open/tcp//ssl|http//Apache httpd 2.4.48/	Ignored State: filtered (997)	Seq Index: 260	IP ID Seq: All zeros
+# Nmap done at Thu Sep 28 14:52:17 2023 -- 1 IP address (1 host up) scanned in 37.15 seconds
