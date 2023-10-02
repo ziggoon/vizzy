@@ -1,10 +1,13 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/jritsema/gotoolbox/web"
 )
 
@@ -14,9 +17,6 @@ func indexHandler(r *http.Request) *web.Response {
 
 func credsHandler(r *http.Request) *web.Response {
 	switch r.Method {
-	/*case http.MethodGet:
-	return web.HTML(http.StatusOK, html, "creds.html", data, nil)
-	*/
 	case http.MethodPost:
 		row := Credential{}
 		r.ParseForm()
@@ -34,8 +34,11 @@ func credsHandler(r *http.Request) *web.Response {
 		data = append(data, row)
 
 		return web.HTML(http.StatusOK, html, "creds.html", data, nil)
+
+	default:
+		return web.Empty(http.StatusMethodNotAllowed)
 	}
-	return web.Empty(http.StatusNotImplemented)
+
 }
 
 func addCreds(r *http.Request) *web.Response {
@@ -43,7 +46,7 @@ func addCreds(r *http.Request) *web.Response {
 }
 
 func getScanFiles() ([]string, error) {
-	files, err := os.ReadDir("./scans")
+	files, err := os.ReadDir("./xml")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,20 +60,76 @@ func getScanFiles() ([]string, error) {
 }
 
 func scansHandler(r *http.Request) *web.Response {
-	id, _ := web.PathLast(r)
 	scanFiles, err := getScanFiles()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	data := struct {
-		ID        string
 		ScanFiles []string
 	}{
-		ID:        id,
 		ScanFiles: scanFiles,
 	}
 
-	//fmt.Println("scans.html returned")
 	return web.HTML(http.StatusOK, html, "scans.html", data, nil)
+}
+
+func scanHandler(r *http.Request) *web.Response {
+	id, segments := web.PathLast(r)
+
+	data := struct {
+		ID string
+	}{
+		ID: id,
+	}
+	if segments < 2 {
+		log.Fatal("meow")
+	}
+
+	return web.HTML(http.StatusOK, html, "scan.html", data, nil)
+}
+
+func uploadHandler(r *http.Request) *web.Response {
+	uploadDir := "./xml"
+
+	switch r.Method {
+	case http.MethodGet:
+		return web.HTML(http.StatusOK, html, "upload.html", nil, nil)
+
+	case http.MethodPost:
+		err := r.ParseMultipartForm(10 << 20)
+		if err != nil {
+			return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
+		}
+
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
+		}
+		defer file.Close()
+
+		err = os.MkdirAll(uploadDir, 0755)
+		if err != nil {
+			return web.HTML(http.StatusInternalServerError, html, "upload.html", nil, nil)
+		}
+
+		fileName := uuid.New().String() + ".xml"
+
+		filePath := filepath.Join(uploadDir, fileName)
+		newFile, err := os.Create(filePath)
+		if err != nil {
+			return web.HTML(http.StatusInternalServerError, html, "upload.html", nil, nil)
+		}
+		defer newFile.Close()
+
+		_, err = io.Copy(newFile, file)
+		if err != nil {
+			return web.HTML(http.StatusInternalServerError, html, "upload.html", nil, nil)
+		}
+
+		return web.HTML(http.StatusOK, html, "scans.html", nil, nil)
+
+	default:
+		return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
+	}
 }

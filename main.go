@@ -22,9 +22,6 @@ var (
 	//go:embed css/output.css
 	css embed.FS
 
-	//go:embed all:scans/*
-	nmap embed.FS
-
 	//parsed templates
 	html *template.Template
 
@@ -40,17 +37,18 @@ func startHTTPServer(dbConnection *Database, data []Credential) {
 
 	router := http.NewServeMux()
 	router.Handle("/css/output.css", http.FileServer(http.FS(css)))
-	router.Handle("/nmap/", http.FileServer(http.FS(nmap)))
+	router.Handle("/xml/", http.StripPrefix("/xml/", http.FileServer(http.Dir("./xml"))))
 
 	router.Handle("/", web.Action(indexHandler))
-	router.Handle("/index.html", web.Action(indexHandler))
 
 	router.Handle("/creds", web.Action(credsHandler))
 	router.Handle("/creds/", web.Action(credsHandler))
 	router.Handle("/creds/add", web.Action(addCreds))
 
+	router.Handle("/scan/", web.Action(scanHandler))
 	router.Handle("/scans", web.Action(scansHandler))
-	router.Handle("/scans/", web.Action(scansHandler))
+
+	router.Handle("/upload", web.Action(uploadHandler))
 
 	nextRequestID := func() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())

@@ -6,13 +6,13 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet" />
-    <title>Go + HTMX + Tailwind</title>
+    <title>Vizzy</title>
   </head>
   <body>
     <main>
       <div> {{ template "navbar.html" . }} </div>
       <div>
-        <iframe src="/nmap/{{ . }}"></iframe>
+        <iframe src="/xml/{{ .ID }}" class="h-screen w-screen"></iframe>
       </div>
     </main>
   </body>
