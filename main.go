@@ -19,13 +19,8 @@ var (
 	//go:embed all:templates/*
 	templateFS embed.FS
 
-	//go:embed css/output.css
-	css embed.FS
-
 	//parsed templates
 	html *template.Template
-
-	dbConnection Database
 )
 
 func startHTTPServer(dbConnection *Database, data []Credential) {
@@ -36,7 +31,6 @@ func startHTTPServer(dbConnection *Database, data []Credential) {
 	}
 
 	router := http.NewServeMux()
-	router.Handle("/css/output.css", http.FileServer(http.FS(css)))
 	router.Handle("/xml/", http.StripPrefix("/xml/", http.FileServer(http.Dir("./xml"))))
 
 	router.Handle("/", web.Action(indexHandler))

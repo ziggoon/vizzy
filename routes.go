@@ -11,6 +11,10 @@ import (
 	"github.com/jritsema/gotoolbox/web"
 )
 
+var (
+	uploadDir = "./xml"
+)
+
 func indexHandler(r *http.Request) *web.Response {
 	return web.HTML(http.StatusOK, html, "index.html", data, nil)
 }
@@ -46,7 +50,12 @@ func addCreds(r *http.Request) *web.Response {
 }
 
 func getScanFiles() ([]string, error) {
-	files, err := os.ReadDir("./xml")
+	err := os.MkdirAll(uploadDir, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	files, err := os.ReadDir(uploadDir)
 	if err != nil {
 		log.Fatal(err)
 	}
