@@ -8,11 +8,20 @@ import (
 )
 
 var (
-	data []Credential
+	creds []Credential
+	hosts []Host
 )
 
 type Database struct {
 	Connection *sql.DB
+}
+
+type Host struct {
+	Id          int
+	Hostname    string
+	IpAddress   string
+	Os          string
+	Information string
 }
 
 type Credential struct {
@@ -38,6 +47,13 @@ func (d *Database) Close() {
 
 func createDbSchema(d *Database) {
 	const createStmt string = `
+	create table if not exists Hosts (
+		id integer primary key autoincrement not null,
+		hostname text not null,
+		ipaddress text not null,
+		os text not null,
+		information text not null
+	);
   	create table if not exists Credentials (
 		id integer primary key autoincrement not null,
 		username text not null,
@@ -51,6 +67,95 @@ func createDbSchema(d *Database) {
 		log.Println("", err)
 		return
 	}
+}
+
+func getHosts(d *Database) ([]Host, error) {
+	var id int
+	var hostname, ipaddress, os, information string
+
+	rows, err := d.Connection.Query("select * from hosts")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&id, &hostname, &ipaddress, &os, &information)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		hosts = append(hosts, Host{
+			Id:          id,
+			Hostname:    hostname,
+			IpAddress:   ipaddress,
+			Os:          os,
+			Information: information,
+		})
+	}
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return hosts, nil
+}
+
+func insertHost(d *Database, host Host) {
+	tx, err := d.Connection.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt, err := tx.Prepare("insert into hosts(hostname, ipaddress, os, information) values(?, ?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(host.Hostname, host.IpAddress, host.Os, host.Information)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getCredentials(d *Database) ([]Credential, error) {
+	var id int
+	var username, password, host, information string
+
+	rows, err := d.Connection.Query("select * from credentials")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&id, &username, &password, &host, &information)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		creds = append(creds, Credential{
+			Id:          id,
+			Username:    username,
+			Password:    password,
+			Host:        host,
+			Information: information,
+		})
+	}
+
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return creds, nil
 }
 
 func insertCredential(d *Database, cred Credential) {
@@ -74,56 +179,4 @@ func insertCredential(d *Database, cred Credential) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Println("insert should've worked we might be fucked tho")
-}
-
-func getCredentials(d *Database) ([]Credential, error) {
-	var id int
-	var username, password, host, information string
-
-	rows, err := d.Connection.Query("select * from credentials")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		err = rows.Scan(&id, &username, &password, &host, &information)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		data = append(data, Credential{
-			Id:          id,
-			Username:    username,
-			Password:    password,
-			Host:        host,
-			Information: information,
-		})
-	}
-
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return data, nil
-}
-
-func getCredentialById(d *Database, uid int) (Credential, error) {
-	var id int
-	var username, password, host, information string
-
-	stmt, err := d.Connection.Prepare("select * from credentials where id = ?")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
-
-	err = stmt.QueryRow(uid).Scan(&id, &username, &password, &host, &information)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return Credential{Id: id, Username: username, Password: password, Host: host, Information: information}, nil
 }

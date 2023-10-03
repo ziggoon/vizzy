@@ -23,7 +23,7 @@ var (
 	html *template.Template
 )
 
-func startHTTPServer(dbConnection *Database, data []Credential) {
+func startHTTPServer(dbConnection *Database, creds []Credential, hosts []Host) {
 	var err error
 	html, err = web.TemplateParseFSRecursive(templateFS, ".html", true, nil)
 	if err != nil {
@@ -35,12 +35,14 @@ func startHTTPServer(dbConnection *Database, data []Credential) {
 
 	router.Handle("/", web.Action(indexHandler))
 
-	router.Handle("/creds", web.Action(credsHandler))
-	router.Handle("/creds/", web.Action(credsHandler))
-	router.Handle("/creds/add", web.Action(addCreds))
+	router.Handle("/hosts", web.Action(hostsHandler))
+	router.Handle("/hosts/add", web.Action(addHostsHandler))
 
-	router.Handle("/scan/", web.Action(scanHandler))
+	router.Handle("/creds", web.Action(credsHandler))
+	router.Handle("/creds/add", web.Action(addCredsHandler))
+
 	router.Handle("/scans", web.Action(scansHandler))
+	router.Handle("/scan/", web.Action(scanHandler))
 
 	router.Handle("/upload", web.Action(uploadHandler))
 
@@ -71,16 +73,22 @@ func handleSigTerms() {
 
 func main() {
 	handleSigTerms()
+
 	dbConnection, err := createDbConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 	createDbSchema(dbConnection)
 
-	data, err := getCredentials(dbConnection)
+	creds, err := getCredentials(dbConnection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	startHTTPServer(dbConnection, data)
+	hosts, err := getHosts(dbConnection)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	startHTTPServer(dbConnection, creds, hosts)
 }

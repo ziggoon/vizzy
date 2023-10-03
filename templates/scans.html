@@ -10,7 +10,7 @@
   <body>
     <main>
       <div> {{ template "navbar.html" . }} </div>
-      <div id="scans" class="h-screen mt-4">
+      <div id="scans" class="md:container md:mx-auto">
         <div class="p-2 flex flex-col justify-center items-center">
           {{ range .ScanFiles }}
             <a href="/scan/{{ . }}">

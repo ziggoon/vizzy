@@ -15,8 +15,47 @@ var (
 	uploadDir = "./xml"
 )
 
+// handlers
 func indexHandler(r *http.Request) *web.Response {
-	return web.HTML(http.StatusOK, html, "index.html", data, nil)
+	return web.HTML(http.StatusOK, html, "index.html", creds, nil)
+}
+
+func hostsHandler(r *http.Request) *web.Response {
+	switch r.Method {
+	case http.MethodPost:
+		row := Host{}
+		r.ParseForm()
+		row.Hostname = r.Form.Get("hostname")
+		row.IpAddress = r.Form.Get("ipaddress")
+		row.Os = r.Form.Get("os")
+		row.Information = r.Form.Get("information")
+
+		dbConnection, err := createDbConnection()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		insertHost(dbConnection, row)
+		hosts = append(hosts, row)
+
+		return web.HTML(http.StatusOK, html, "hosts.html", hosts, nil)
+
+	case http.MethodGet:
+		return web.HTML(http.StatusOK, html, "hosts.html", hosts, nil)
+
+	default:
+		return web.Empty(http.StatusMethodNotAllowed)
+	}
+}
+
+func addHostsHandler(r *http.Request) *web.Response {
+	switch r.Method {
+	case http.MethodGet:
+		return web.HTML(http.StatusOK, html, "hosts-add.html", hosts, nil)
+
+	default:
+		return web.HTML(http.StatusMethodNotAllowed, html, "index.html", creds, nil)
+	}
 }
 
 func credsHandler(r *http.Request) *web.Response {
@@ -35,9 +74,12 @@ func credsHandler(r *http.Request) *web.Response {
 		}
 
 		insertCredential(dbConnection, row)
-		data = append(data, row)
+		creds = append(creds, row)
 
-		return web.HTML(http.StatusOK, html, "creds.html", data, nil)
+		return web.HTML(http.StatusOK, html, "creds.html", creds, nil)
+
+	case http.MethodGet:
+		return web.HTML(http.StatusOK, html, "creds.html", creds, nil)
 
 	default:
 		return web.Empty(http.StatusMethodNotAllowed)
@@ -45,57 +87,55 @@ func credsHandler(r *http.Request) *web.Response {
 
 }
 
-func addCreds(r *http.Request) *web.Response {
-	return web.HTML(http.StatusOK, html, "creds-add.html", data, nil)
-}
+func addCredsHandler(r *http.Request) *web.Response {
+	switch r.Method {
+	case http.MethodGet:
+		return web.HTML(http.StatusOK, html, "creds-add.html", creds, nil)
 
-func getScanFiles() ([]string, error) {
-	err := os.MkdirAll(uploadDir, 0755)
-	if err != nil {
-		log.Fatal(err)
+	default:
+		return web.HTML(http.StatusMethodNotAllowed, html, "index.html", creds, nil)
 	}
-
-	files, err := os.ReadDir(uploadDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var fileNames []string
-	for _, file := range files {
-		fileNames = append(fileNames, file.Name())
-	}
-
-	return fileNames, nil
 }
 
 func scansHandler(r *http.Request) *web.Response {
-	scanFiles, err := getScanFiles()
-	if err != nil {
-		log.Fatal(err)
-	}
+	switch r.Method {
+	case http.MethodGet:
+		scanFiles, err := getScanFiles()
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	data := struct {
-		ScanFiles []string
-	}{
-		ScanFiles: scanFiles,
-	}
+		scans := struct {
+			ScanFiles []string
+		}{
+			ScanFiles: scanFiles,
+		}
 
-	return web.HTML(http.StatusOK, html, "scans.html", data, nil)
+		return web.HTML(http.StatusOK, html, "scans.html", scans, nil)
+
+	default:
+		return web.HTML(http.StatusMethodNotAllowed, html, "index.html", nil, nil)
+	}
 }
 
 func scanHandler(r *http.Request) *web.Response {
-	id, segments := web.PathLast(r)
+	switch r.Method {
+	case http.MethodGet:
+		id, segments := web.PathLast(r)
+		scan := struct {
+			ID string
+		}{
+			ID: id,
+		}
+		if segments < 2 {
+			log.Fatal("meow")
+		}
 
-	data := struct {
-		ID string
-	}{
-		ID: id,
-	}
-	if segments < 2 {
-		log.Fatal("meow")
-	}
+		return web.HTML(http.StatusOK, html, "scan.html", scan, nil)
 
-	return web.HTML(http.StatusOK, html, "scan.html", data, nil)
+	default:
+		return web.HTML(http.StatusMethodNotAllowed, html, "index.html", nil, nil)
+	}
 }
 
 func uploadHandler(r *http.Request) *web.Response {
@@ -141,4 +181,24 @@ func uploadHandler(r *http.Request) *web.Response {
 	default:
 		return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
 	}
+}
+
+// helpers
+func getScanFiles() ([]string, error) {
+	err := os.MkdirAll(uploadDir, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	files, err := os.ReadDir(uploadDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var fileNames []string
+	for _, file := range files {
+		fileNames = append(fileNames, file.Name())
+	}
+
+	return fileNames, nil
 }
