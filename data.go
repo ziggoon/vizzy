@@ -8,12 +8,20 @@ import (
 )
 
 var (
+  users []User
+  hosts []Host
 	creds []Credential
-	hosts []Host
 )
 
 type Database struct {
 	Connection *sql.DB
+}
+
+type User struct {
+  Id int
+  Username string
+  PasswordHash string
+  Admin bool
 }
 
 type Host struct {
@@ -47,6 +55,12 @@ func (d *Database) Close() {
 
 func createDbSchema(d *Database) {
 	const createStmt string = `
+  create table if not exists Users (
+    id integer primary key autoincrement not null,
+    username text not null,
+    passwordhash text not null,
+    admin bool not null
+  );
 	create table if not exists Hosts (
 		id integer primary key autoincrement not null,
 		hostname text not null,
@@ -67,6 +81,102 @@ func createDbSchema(d *Database) {
 		log.Println("", err)
 		return
 	}
+}
+
+func getUsers(d *Database) ([]User, error) {
+  var id int
+  var username, passwordhash string
+  var admin bool
+
+  rows, err := d.Connection.Query("select * from users")
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer rows.Close()
+
+  for rows.Next() {
+    err = rows.Scan(&id, &username, &passwordhash, &admin)
+    if err != nil {
+      log.Fatal(err)
+    }
+
+    users = append(users, User{
+      Id: id,
+      Username: username,
+      PasswordHash: passwordhash,
+      Admin: admin,
+    })
+  }
+  
+  err = rows.Err()
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return users, nil
+}
+
+func insertUser(d *Database, user User) {
+	tx, err := d.Connection.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt, err := tx.Prepare("insert into users(username, passwordhash, admin) values(?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(user.Username, user.PasswordHash, user.Admin)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getUserById(d *Database, id int) (User, error) {
+  var username, password string
+  var admin bool
+
+  stmt, err := d.Connection.Prepare("select * from Users where id = ?")
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer stmt.Close()
+
+  err = stmt.QueryRow(id).Scan(&id, &username, &password, &admin)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return User{
+    Id: id,
+    Username: username,
+    PasswordHash: password,
+    Admin: admin,
+  }, nil
+}
+
+func getUserIdByUsername(d *Database, username string) (int, error) {
+  var id int
+  
+  stmt, err := d.Connection.Prepare("select id from Users where username = ?")
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer stmt.Close()
+
+  err = stmt.QueryRow(username).Scan(&id)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return id, nil
 }
 
 func getHosts(d *Database) ([]Host, error) {

@@ -31,20 +31,26 @@ func startHTTPServer(dbConnection *Database, creds []Credential, hosts []Host) {
 	}
 
 	router := http.NewServeMux()
-	router.Handle("/xml/", http.StripPrefix("/xml/", http.FileServer(http.Dir("./xml"))))
 
-	router.Handle("/", web.Action(indexHandler))
+  router.Handle("/admin", authMiddleware(adminMiddleware(web.Action(adminHandler))))
+  
+	router.Handle("/xml/", authMiddleware(http.StripPrefix("/xml/", http.FileServer(http.Dir("./xml")))))
 
-	router.Handle("/hosts", web.Action(hostsHandler))
-	router.Handle("/hosts/add", web.Action(addHostsHandler))
+  router.Handle("/login", web.Action(loginHandler))
+  router.Handle("/logout", authMiddleware(web.Action(logoutHandler)))
 
-	router.Handle("/creds", web.Action(credsHandler))
-	router.Handle("/creds/add", web.Action(addCredsHandler))
+	router.Handle("/hosts", authMiddleware(web.Action(hostsHandler)))
+	router.Handle("/hosts/add", authMiddleware(web.Action(addHostsHandler)))
 
-	router.Handle("/scans", web.Action(scansHandler))
-	router.Handle("/scan/", web.Action(scanHandler))
+	router.Handle("/creds", authMiddleware(web.Action(credsHandler)))
+	router.Handle("/creds/add", authMiddleware(web.Action(addCredsHandler)))
 
-	router.Handle("/upload", web.Action(uploadHandler))
+	router.Handle("/scans", authMiddleware(web.Action(scansHandler)))
+	router.Handle("/scan/", authMiddleware(web.Action(scanHandler)))
+
+	router.Handle("/upload", authMiddleware(web.Action(uploadHandler)))
+
+	router.Handle("/", authMiddleware(web.Action(indexHandler)))
 
 	nextRequestID := func() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())

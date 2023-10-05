@@ -11,14 +11,28 @@
     <main>
       <div> {{ template "navbar.html" . }} </div>
       <div id="scans" class="md:container md:mx-auto">
-        <div class="p-2 flex flex-col justify-center items-center">
-          {{ range .ScanFiles }}
-            <a href="/scan/{{ . }}">
-              <div class="my-2">{{ . }}</div>
-            </a>
-          {{ end }}
+        <div class="p-2">
+          <table class="min-w-full table-auto">
+            <thead>
+              <tr>
+                <th class="px-4 py-2">File Name</th>
+                <th class="px-4 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ range .ScanFiles }}
+                <tr>
+                  <td class="border px-4 py-2">{{ . }}</td>
+                  <td class="border px-4 py-2">
+                    <a href="/scan/{{ . }}" class="text-blue-500 hover:text-blue-700">View</a>
+                  </td>
+                </tr>
+              {{ end }}
+            </tbody>
+          </table>
         </div>
       </div>
     </main>
   </body>
 </html>
+

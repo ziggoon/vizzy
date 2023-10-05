@@ -2,12 +2,13 @@ package main
 
 import (
 	"io"
+  "fmt"
+  "time"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/jritsema/gotoolbox/web"
 )
 
@@ -18,6 +19,10 @@ var (
 // handlers
 func indexHandler(r *http.Request) *web.Response {
 	return web.HTML(http.StatusOK, html, "index.html", creds, nil)
+}
+
+func adminHandler(r *http.Request) *web.Response {
+  return web.HTML(http.StatusOK, html, "admin.html", nil, nil)
 }
 
 func hostsHandler(r *http.Request) *web.Response {
@@ -151,7 +156,7 @@ func uploadHandler(r *http.Request) *web.Response {
 			return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
 		}
 
-		file, _, err := r.FormFile("file")
+		file, header, err := r.FormFile("file")
 		if err != nil {
 			return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
 		}
@@ -162,7 +167,7 @@ func uploadHandler(r *http.Request) *web.Response {
 			return web.HTML(http.StatusInternalServerError, html, "upload.html", nil, nil)
 		}
 
-		fileName := uuid.New().String() + ".xml"
+		fileName := header.Filename
 
 		filePath := filepath.Join(uploadDir, fileName)
 		newFile, err := os.Create(filePath)
@@ -181,6 +186,66 @@ func uploadHandler(r *http.Request) *web.Response {
 	default:
 		return web.HTML(http.StatusBadRequest, html, "upload.html", nil, nil)
 	}
+}
+
+func loginHandler(r *http.Request) *web.Response {
+  switch r.Method {
+  case http.MethodGet:
+    return web.HTML(http.StatusOK, html, "login.html", nil, nil)
+
+  case http.MethodPost:
+    row := User{}
+		r.ParseForm()
+		row.Username = r.Form.Get("username")
+		row.PasswordHash = r.Form.Get("password")
+    
+    fmt.Println(row.Username, row.PasswordHash)
+
+    // need to implement authentication logic
+    dbConnection, err := createDbConnection()
+		if err != nil {
+			log.Fatal(err)
+	  }
+
+    uid, err := getUserIdByUsername(dbConnection, row.Username)
+    if err != nil {
+      log.Fatal(err)
+    }
+
+    jwt, err := createJWT(uid)
+    if err != nil {
+      log.Fatal(err)
+    }
+ 
+    cookieValue := "jwt=" + jwt + "; Path=/; HttpOnly; Expires=" + time.Now().Add(time.Hour*24).Format(time.RFC1123)
+
+    headers := map[string]string{
+      "Set-Cookie": cookieValue,
+      "Location": "/",
+    }
+
+    return web.HTML(http.StatusAccepted, html, "index.html", nil, headers)
+  
+  default:
+    return web.HTML(http.StatusBadRequest, html, "login.html", nil, nil)
+  }
+}
+
+func logoutHandler(r *http.Request) *web.Response {
+  switch r.Method {
+  case http.MethodGet:
+    cookieValue := "jwt=" + "" + "; Path=/; HttpOnly; Expires=" + time.Now().Add(time.Hour*24).Format(time.RFC1123)
+    
+    headers := map[string]string{
+      "Set-Cookie": cookieValue,
+      "Location": "/",
+    }
+ 
+    return web.HTML(http.StatusSeeOther, html, "logout.html", nil, headers)
+
+  default:
+    return web.HTML(http.StatusOK, html, "index.html", nil, nil)
+  }
 }
 
 // helpers
