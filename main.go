@@ -88,13 +88,19 @@ func main() {
 
 	creds, err := getCredentials(dbConnection)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	hosts, err := getHosts(dbConnection)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
+  password, err := createAdmin(dbConnection)
+  if err != nil {
+    log.Print(err)
+  }
+
+  fmt.Println("Please login with the following credentials:", "admin", password)
 	startHTTPServer(dbConnection, creds, hosts)
 }

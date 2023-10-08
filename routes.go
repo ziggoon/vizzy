@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-  "fmt"
   "time"
 	"log"
 	"net/http"
@@ -37,7 +36,7 @@ func hostsHandler(r *http.Request) *web.Response {
 
 		dbConnection, err := createDbConnection()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 
 		insertHost(dbConnection, row)
@@ -75,7 +74,7 @@ func credsHandler(r *http.Request) *web.Response {
 
 		dbConnection, err := createDbConnection()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 
 		insertCredential(dbConnection, row)
@@ -107,7 +106,7 @@ func scansHandler(r *http.Request) *web.Response {
 	case http.MethodGet:
 		scanFiles, err := getScanFiles()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 
 		scans := struct {
@@ -133,7 +132,7 @@ func scanHandler(r *http.Request) *web.Response {
 			ID: id,
 		}
 		if segments < 2 {
-			log.Fatal("meow")
+			log.Print("meow")
 		}
 
 		return web.HTML(http.StatusOK, html, "scan.html", scan, nil)
@@ -199,22 +198,25 @@ func loginHandler(r *http.Request) *web.Response {
 		row.Username = r.Form.Get("username")
 		row.PasswordHash = r.Form.Get("password")
     
-    fmt.Println(row.Username, row.PasswordHash)
-
     // need to implement authentication logic
     dbConnection, err := createDbConnection()
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 	  }
 
-    uid, err := getUserIdByUsername(dbConnection, row.Username)
+    user, err := getUserByUsername(dbConnection, row.Username)
     if err != nil {
-      log.Fatal(err)
+      log.Print(err)
     }
 
-    jwt, err := createJWT(uid)
+    err = verifyPassword(user.PasswordHash, row.PasswordHash)
     if err != nil {
-      log.Fatal(err)
+      return web.HTML(http.StatusBadRequest, html, "login.html", nil, nil)
+    }
+
+    jwt, err := createJWT(user.Id)
+    if err != nil {
+      log.Print(err)
     }
  
     cookieValue := "jwt=" + jwt + "; Path=/; HttpOnly; Expires=" + time.Now().Add(time.Hour*24).Format(time.RFC1123)
@@ -252,12 +254,12 @@ func logoutHandler(r *http.Request) *web.Response {
 func getScanFiles() ([]string, error) {
 	err := os.MkdirAll(uploadDir, 0755)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	files, err := os.ReadDir(uploadDir)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	var fileNames []string

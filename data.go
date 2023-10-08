@@ -1,6 +1,7 @@
 package main
 
 import (
+  "fmt"
 	"database/sql"
 	"log"
 
@@ -57,7 +58,7 @@ func createDbSchema(d *Database) {
 	const createStmt string = `
   create table if not exists Users (
     id integer primary key autoincrement not null,
-    username text not null,
+    username text not null unique, 
     passwordhash text not null,
     admin bool not null
   );
@@ -78,7 +79,7 @@ func createDbSchema(d *Database) {
 	`
 	_, err := d.Connection.Exec(createStmt)
 	if err != nil {
-		log.Println("", err)
+		log.Print(err)
 		return
 	}
 }
@@ -90,14 +91,14 @@ func getUsers(d *Database) ([]User, error) {
 
   rows, err := d.Connection.Query("select * from users")
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
   }
   defer rows.Close()
 
   for rows.Next() {
     err = rows.Scan(&id, &username, &passwordhash, &admin)
     if err != nil {
-      log.Fatal(err)
+      log.Print(err)
     }
 
     users = append(users, User{
@@ -110,32 +111,79 @@ func getUsers(d *Database) ([]User, error) {
   
   err = rows.Err()
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
   }
 
   return users, nil
 }
 
+func createAdmin(d *Database) (string, error) {
+  var password string
+
+  stmt, err := d.Connection.Prepare("delete from Users where username = ?")
+  if err != nil {
+    log.Print(err)
+  }
+  defer stmt.Close()
+
+  _, err = stmt.Exec("admin")
+  if err != nil {
+    log.Print(err)
+  }
+
+  stmt_2, err := d.Connection.Prepare("insert into users(username, passwordhash, admin) values(?, ?, ?)")
+  if err != nil {
+    log.Print(err)
+  }
+  defer stmt_2.Close()
+
+  password, err = generateRandomString(12)
+  if err != nil {
+    log.Print(err)
+    return "", nil
+  }
+
+  hashedPassword, err := hashPassword(password)
+  if err != nil {
+    log.Print(err)
+  }
+
+  _, err = stmt_2.Exec("admin", hashedPassword, true)
+  if err != nil {
+    log.Print(err)
+  }
+
+  return password, nil
+}
+
 func insertUser(d *Database, user User) {
 	tx, err := d.Connection.Begin()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	stmt, err := tx.Prepare("insert into users(username, passwordhash, admin) values(?, ?, ?)")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(user.Username, user.PasswordHash, user.Admin)
+  hashedPassword, err := hashPassword(user.PasswordHash)
+  if err != nil {
+    log.Print(err)
+    return
+  }
+
+  fmt.Println(hashPassword)
+
+	_, err = stmt.Exec(user.Username, hashedPassword, user.Admin)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 }
 
@@ -145,13 +193,37 @@ func getUserById(d *Database, id int) (User, error) {
 
   stmt, err := d.Connection.Prepare("select * from Users where id = ?")
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
   }
   defer stmt.Close()
 
   err = stmt.QueryRow(id).Scan(&id, &username, &password, &admin)
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
+  }
+
+  return User{
+    Id: id,
+    Username: username,
+    PasswordHash: password,
+    Admin: admin,
+  }, nil
+}
+
+func getUserByUsername(d *Database, username string) (User, error) {
+  var id int
+  var password string
+  var admin bool
+
+  stmt, err := d.Connection.Prepare("select * from Users where username = ?")
+  if err != nil {
+    log.Print(err)
+  }
+  defer stmt.Close()
+
+  err = stmt.QueryRow(username).Scan(&id, &username, &password, &admin)
+  if err != nil {
+    log.Print(err)
   }
 
   return User{
@@ -167,13 +239,13 @@ func getUserIdByUsername(d *Database, username string) (int, error) {
   
   stmt, err := d.Connection.Prepare("select id from Users where username = ?")
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
   }
   defer stmt.Close()
 
   err = stmt.QueryRow(username).Scan(&id)
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
   }
 
   return id, nil
@@ -185,14 +257,14 @@ func getHosts(d *Database) ([]Host, error) {
 
 	rows, err := d.Connection.Query("select * from hosts")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		err = rows.Scan(&id, &hostname, &ipaddress, &os, &information)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 
 		hosts = append(hosts, Host{
@@ -206,7 +278,7 @@ func getHosts(d *Database) ([]Host, error) {
 
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	return hosts, nil
@@ -215,23 +287,23 @@ func getHosts(d *Database) ([]Host, error) {
 func insertHost(d *Database, host Host) {
 	tx, err := d.Connection.Begin()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	stmt, err := tx.Prepare("insert into hosts(hostname, ipaddress, os, information) values(?, ?, ?, ?)")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer stmt.Close()
 
 	_, err = stmt.Exec(host.Hostname, host.IpAddress, host.Os, host.Information)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 }
 
@@ -241,14 +313,14 @@ func getCredentials(d *Database) ([]Credential, error) {
 
 	rows, err := d.Connection.Query("select * from credentials")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		err = rows.Scan(&id, &username, &password, &host, &information)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 
 		creds = append(creds, Credential{
@@ -262,7 +334,7 @@ func getCredentials(d *Database) ([]Credential, error) {
 
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	return creds, nil
@@ -271,22 +343,22 @@ func getCredentials(d *Database) ([]Credential, error) {
 func insertCredential(d *Database, cred Credential) {
 	tx, err := d.Connection.Begin()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	stmt, err := tx.Prepare("insert into credentials(username, password, host, information) values(?, ?, ?, ?)")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer stmt.Close()
 
 	_, err = stmt.Exec(cred.Username, cred.Password, cred.Host, cred.Information)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 }

@@ -1,11 +1,18 @@
 package main
 
 import (
+	"log"
 	"net/http"
-  "log"
 	"time"
+  "crypto/rand"
+  "encoding/hex"
 
 	"github.com/golang-jwt/jwt"
+	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+  JWT_SECRET, err = generateRandomString(16)
 )
 
 // auth & admin middleware
@@ -18,7 +25,7 @@ func authMiddleware(next http.Handler) http.Handler {
     }
 
     token, err := jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
-      return []byte("poop"), nil
+      return []byte(JWT_SECRET), nil
     })
 
     if err != nil || !token.Valid {
@@ -47,8 +54,36 @@ func adminMiddleware(next http.Handler) http.Handler {
   })
 }
 
-
 // helper funcs
+func hashPassword(password string) (string, error) {
+  cost := bcrypt.DefaultCost
+  hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), cost)
+  if err != nil {
+    return "", err
+  }
+
+  return string(hashedPassword), nil
+}
+
+func verifyPassword(hash, password string) error {
+  return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+func generateRandomString(length int) (string, error) {
+  byteLength := length / 2
+
+  randomBytes := make([]byte, byteLength)
+
+  _, err := rand.Read(randomBytes)
+  if err != nil {
+      return "", err
+  }
+
+  randomString := hex.EncodeToString(randomBytes)
+
+  return randomString, nil
+}
+
 func createJWT(uid int) (string, error) {
   claims := jwt.MapClaims{
     "sub": uid,
@@ -57,7 +92,7 @@ func createJWT(uid int) (string, error) {
 
   token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-  tokenString, err := token.SignedString([]byte("poop"))
+  tokenString, err := token.SignedString([]byte(JWT_SECRET))
   if err != nil {
     return "", err
   }
@@ -72,7 +107,7 @@ func isUserAdmin(r *http.Request) bool {
   }
 
   token, err := jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
-    return []byte("poop"), nil
+    return []byte(JWT_SECRET), nil
   })
   if err != nil || !token.Valid {
     return false
@@ -85,12 +120,12 @@ func isUserAdmin(r *http.Request) bool {
 
   dbConnection, err := createDbConnection()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
   user, err := getUserById(dbConnection, int(claims["sub"].(float64)))
   if err != nil {
-    log.Fatal(err)
+    log.Print(err)
   }
 
   if !user.Admin {
