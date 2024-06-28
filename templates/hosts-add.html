@@ -1,0 +1,6 @@
+<tbody id="table-body">
+  {{ template "host-add.html" . }}
+	{{range .}}
+		{{ template "host.html" . }}
+	{{end}}
+</tbody>

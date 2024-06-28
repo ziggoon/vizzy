@@ -1,0 +1,17 @@
+<tr id="datarow-{{.Id}}" class="border-b dark:border-neutral-500">
+  <td class="whitespace-nowrap px-6 py-4">{{.Hostname}}</td>
+  <td class="whitespace-nowrap px-6 py-4">{{.IpAddress}}</td>
+  <td class="whitespace-nowrap px-6 py-4">{{.Os}}</td>
+  <td class="whitespace-nowrap px-6 py-4">{{.Information}}</td>
+  <td class="whitespace-nowrap px-1 py-1">
+    <a
+      hx-delete="/hosts/{{.Id}}"
+      hx-target="#hosts"
+      hx-confirm="Are you sure you want to delete {{.Hostname}}?"
+      hx-indicator="#processing"
+      class="hover:underline text-blue-700"
+      href=""
+      >Delete</a
+    >
+  </td>
+</tr>

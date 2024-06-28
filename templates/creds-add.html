@@ -1,0 +1,6 @@
+<tbody id="table-body">
+  {{ template "cred-add.html" . }}
+	{{range .}}
+		{{ template "cred.html" . }}
+	{{end}}
+</tbody>
